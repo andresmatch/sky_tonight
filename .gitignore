@@ -2,6 +2,6 @@
 __pycache__/
 *.pyc
 .env
-*.bsp
-*.dat
-data/
+data/*.bsp
+data/*.txt
+data/*.dat
