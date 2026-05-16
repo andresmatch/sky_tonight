@@ -5,3 +5,5 @@ __pycache__/
 data/*.bsp
 data/*.txt
 data/*.dat
+*.bak
+*.bak2
