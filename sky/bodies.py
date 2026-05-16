@@ -102,7 +102,7 @@ def get_twilight_events(date_local):
     }
     
     # Mapear transiciones
-    prev_e = None
+    prev_e = 0
     for t, e in zip(times, events):
         dt = t.utc_datetime().astimezone(tz_local)
         
@@ -226,3 +226,69 @@ def get_next_moon_phase(date_local, phase_target='new'):
             return t.utc_datetime().astimezone(tz_local)
     
     return None
+
+
+def analyze_night_visibility(body, t_start, t_end, step_minutes=10):
+    """
+    Analiza visibilidad de un cuerpo durante una ventana temporal.
+
+    Barre el rango [t_start, t_end] cada `step_minutes` y reporta:
+        - visible (bool): si supera horizonte en algún momento
+        - max_alt (float): altitud máxima alcanzada
+        - max_alt_time (datetime local): cuándo se alcanza el máximo
+        - max_az (float): azimut en el momento del máximo
+        - rise_time (datetime | None): primer cruce por horizonte subiendo
+        - set_time (datetime | None): primer cruce por horizonte bajando
+
+    Args:
+        body: objeto skyfield (planeta, luna, etc)
+        t_start: Time skyfield - inicio ventana
+        t_end:   Time skyfield - fin ventana
+        step_minutes: granularidad del barrido (default 10)
+
+    Returns:
+        dict con métricas de visibilidad
+    """
+    from datetime import timedelta
+    ts = get_timescale()
+
+    start_dt = t_start.utc_datetime()
+    end_dt = t_end.utc_datetime()
+
+    # Construir lista de muestras
+    samples = []
+    cur = start_dt
+    while cur <= end_dt:
+        samples.append(cur)
+        cur += timedelta(minutes=step_minutes)
+
+    # Calcular posición en cada muestra
+    points = []
+    for dt in samples:
+        t = ts.from_datetime(dt)
+        alt, az, _ = get_position(body, t)
+        points.append((dt, alt, az))
+
+    # Máximo
+    max_idx = max(range(len(points)), key=lambda i: points[i][1])
+    max_dt, max_alt, max_az = points[max_idx]
+
+    # Rise/set (cruces por 0°)
+    rise_time = None
+    set_time = None
+    for i in range(1, len(points)):
+        prev_alt = points[i-1][1]
+        curr_alt = points[i][1]
+        if prev_alt < 0 <= curr_alt and rise_time is None:
+            rise_time = points[i][0].astimezone(tz_local)
+        if prev_alt > 0 >= curr_alt and set_time is None:
+            set_time = points[i][0].astimezone(tz_local)
+
+    return {
+        'visible': max_alt > 0,
+        'max_alt': max_alt,
+        'max_alt_time': max_dt.astimezone(tz_local),
+        'max_az': max_az,
+        'rise_time': rise_time,
+        'set_time': set_time,
+    }
