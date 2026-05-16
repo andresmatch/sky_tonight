@@ -169,8 +169,8 @@ def get_moon_illumination(phase_deg):
     Returns:
         porcentaje (0-100)
     """
-    illumination = abs((phase_deg % 360) - 180) / 180 * 100
-    return 100 - illumination if phase_deg < 180 else illumination
+    from math import cos, radians
+    return (1 - cos(radians(phase_deg))) / 2 * 100
 
 
 def phase_name(phase_deg):
